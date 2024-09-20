@@ -15,7 +15,6 @@ Ensure that you have the necessary permissions to read and write files in the ho
 To install repo-config, ensure you have Go installed on your system. Build the executable by running:
 
 ``` bash
-Copy code
 git clone https://github.com/joelong01/repo-config.git
 cd repo-config
 go build -o repo-config
