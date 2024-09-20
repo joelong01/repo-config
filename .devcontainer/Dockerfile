@@ -44,3 +44,27 @@ RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master
 
 # Expose ports if necessary
 EXPOSE 8080
+
+# update the .zshrc to load the configured environment
+# Append the environment sourcing function to the .zshrc file
+RUN echo 'if [[ -f "load_config.sh" ]]; then' >> ~/.zshrc && \
+    echo '    source ./load_config.sh' >> ~/.zshrc && \
+    echo 'fi' >> ~/.zshrc && \
+    echo '' >> ~/.zshrc && \
+    echo '# Function to source .ENV files from the corresponding PROJECT_DIR' >> ~/.zshrc && \
+    echo 'source_env_files() {' >> ~/.zshrc && \
+    echo '    PROJECT_DIR=$(basename "$PWD")' >> ~/.zshrc && \
+    echo '    CONFIG_DIR="$HOME/.repo-config/$PROJECT_DIR"' >> ~/.zshrc && \
+    echo '    if [[ -d "$CONFIG_DIR" ]]; then' >> ~/.zshrc && \
+    echo '        for env_file in "$CONFIG_DIR"/.*.env; do' >> ~/.zshrc && \
+    echo '            if [[ -f "$env_file" ]]; then' >> ~/.zshrc && \
+    echo '                echo "sourcing $env_file"' >> ~/.zshrc && \
+    echo '                source "$env_file"' >> ~/.zshrc && \
+    echo '            fi' >> ~/.zshrc && \
+    echo '        done' >> ~/.zshrc && \
+    echo '    fi' >> ~/.zshrc && \
+    echo '}' >> ~/.zshrc && \
+    echo '' >> ~/.zshrc && \
+    echo '# Call the function when the shell starts' >> ~/.zshrc && \
+    echo 'source_env_files' >> ~/.zshrc
+
