@@ -98,15 +98,15 @@ func TestSaveConfig(t *testing.T) {
         t.Errorf("Expected no error, got %v", err)
     }
 
-    // Verify JSON output file
-    outputDir := filepath.Join(dir, ".repo-config")
-    jsonOutputFile := filepath.Join(outputDir, ".test-config-values.json")
+    // Verify output files
+
+    jsonOutputFile, envOutputFile, _ := getOutputFilePaths(inputJSONFile)
+  
     if _, err := os.Stat(jsonOutputFile); os.IsNotExist(err) {
         t.Errorf("Expected JSON output file to exist")
     }
 
-    // Verify .env output file
-    envOutputFile := filepath.Join(outputDir, ".test-config-values.env")
+
     if _, err := os.Stat(envOutputFile); os.IsNotExist(err) {
         t.Errorf("Expected .env output file to exist")
     }
@@ -220,7 +220,7 @@ func TestInteractiveConfig(t *testing.T) {
     }
 
     // Simulate user input: Update value and then save
-    userInput := bytes.NewBufferString("1\nnewvalue\ns\n")
+    userInput := bytes.NewBufferString("1\nnewvalue\ns\nc\n")
 
     // Mock inputJSONFile path
     inputJSONFile := "/dev/null"
