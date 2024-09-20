@@ -1,0 +1,23 @@
+{
+  "name": "Go Development Container",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.go",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools",
+        "ms-azuretools.vscode-docker",
+        "golang.go",
+        "msyrus.go-doc"
+      ]
+    },
+    "settings": {
+      "go.gopath": "/go"
+    }
+  },
+  "postCreateCommand": "go mod init github.com/joelong01/repo-config || true",
+  "remoteUser": "vscode"
+}
