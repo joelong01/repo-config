@@ -39,7 +39,7 @@ func CollectConfig(inputJSONFile string, silent bool) error {
 	}
 
 	// Determine the output file paths.
-	jsonOutputFile, _, err := getOutputFilePaths(inputJSONFile)
+	jsonOutputFile, _, err := GetOutputFilePaths(inputJSONFile)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func CollectConfig(inputJSONFile string, silent bool) error {
 			hasChanges := compareConfigs(configMap, existingValues)
 			if hasChanges {
 				// New settings found or settings deleted, proceed interactively.
-				fmt.Println("Configuration changes detected. Proceeding interactively.")
+				fmt.Fprintln(os.Stderr, "Configuration changes detected. Proceeding interactively.")
 				return interactiveConfig(configMap, inputJSONFile, os.Stdin)
 			} else {
 				// No changes, save updated config silently.
@@ -89,7 +89,7 @@ func CollectConfig(inputJSONFile string, silent bool) error {
 			missingValues := checkForMissingValues(configMap)
 			if len(missingValues) > 0 {
 				// Missing values found, proceed interactively.
-				fmt.Println("Missing values detected. Proceeding interactively.")
+				fmt.Fprintln(os.Stderr, "Missing values detected. Proceeding interactively.")
 				return interactiveConfig(configMap, inputJSONFile, os.Stdin)
 			} else {
 				// All values present, return without action.
@@ -128,9 +128,10 @@ func loadConfigFile(jsonFile string) (map[string]ItemConfig, error) {
 	return configMap, nil
 }
 
-// getOutputFilePaths determines the output file paths based on the input JSON file.
+
+// GetOutputFilePaths determines the output file paths based on the input JSON file.
 // Now derives the project name from the Git repository.
-func getOutputFilePaths(inputJSONFile string) (string, string, error) {
+func GetOutputFilePaths(inputJSONFile string) (string, string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get home directory: %v", err)
@@ -272,7 +273,7 @@ func interactiveConfig(configMap map[string]ItemConfig, inputJSONFile string, in
 
 	for {
 		// Use tabwriter for formatting.
-		writer := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		writer := tabwriter.NewWriter(os.Stderr, 0, 0, 2, ' ', 0)
 		fmt.Fprintln(writer, "Index\tDescription\tDefault Value")
 		fmt.Fprintln(writer, "-----\t-----------\t-------------")
 		for i, key := range keys {
@@ -282,7 +283,7 @@ func interactiveConfig(configMap map[string]ItemConfig, inputJSONFile string, in
 		writer.Flush()
 
 		n := len(keys)
-		fmt.Printf("\nEnter a number [1..%d] to update. Press 's' to save, or 'c' to continue: ", n)
+		fmt.Fprintf(os.Stderr, "\nEnter a number [1..%d] to update. Press 's' to save, or 'c' to continue: ", n)
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("failed to read input: %v", err)
@@ -295,20 +296,20 @@ func interactiveConfig(configMap map[string]ItemConfig, inputJSONFile string, in
 			if err := saveConfig(inputJSONFile, configMap); err != nil {
 				return fmt.Errorf("failed to save configuration: %v", err)
 			}
-			fmt.Println("Configuration saved.")
+			fmt.Fprintln(os.Stderr, "Configuration saved.")
 		case "c":
 			return nil
 		default:
 			// Check if input is a valid number.
 			index, err := strconv.Atoi(input)
 			if err != nil || index < 1 || index > n {
-				fmt.Printf("Invalid input. Please enter a number between 1 and %d, 's', 'x', or 'c'.\n", n)
+				fmt.Fprintf(os.Stderr, "Invalid input. Please enter a number between 1 and %d, 's', 'x', or 'c'.\n", n)
 				continue
 			}
 			// Update the selected item.
 			key := keys[index-1]
 			item := configMap[key]
-			fmt.Print("Enter new default value (leave empty to keep current value): ")
+			fmt.Fprint(os.Stderr, "Enter new default value (leave empty to keep current value): ")
 			newValue, err := reader.ReadString('\n')
 			if err != nil {
 				return fmt.Errorf("failed to read input: %v", err)
@@ -317,9 +318,9 @@ func interactiveConfig(configMap map[string]ItemConfig, inputJSONFile string, in
 			if newValue != "" {
 				item.Default = newValue
 				configMap[key] = item
-				fmt.Printf("Default value for '%s' updated to '%s'\n", item.Description, newValue)
+				fmt.Fprintf(os.Stderr, "Default value for '%s' updated to '%s'\n", item.Description, newValue)
 			} else {
-				fmt.Printf("Default value for '%s' remains '%s'\n", item.Description, item.Default)
+				fmt.Fprintf(os.Stderr, "Default value for '%s' remains '%s'\n", item.Description, item.Default)
 			}
 		}
 	}
@@ -328,7 +329,7 @@ func interactiveConfig(configMap map[string]ItemConfig, inputJSONFile string, in
 // saveConfig saves the updated configuration to the appropriate files.
 func saveConfig(inputJSONFile string, configMap map[string]ItemConfig) error {
 	// Use getOutputFilePaths to determine the output file paths
-	jsonOutputFile, envOutputFile, err := getOutputFilePaths(inputJSONFile)
+	jsonOutputFile, envOutputFile, err := GetOutputFilePaths(inputJSONFile)
 	if err != nil {
 		return err
 	}

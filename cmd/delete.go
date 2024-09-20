@@ -18,10 +18,19 @@ var deleteCmd = &cobra.Command{
     Use:   "delete",
     Short: "Delete repository configuration output files",
     Run: func(cmd *cobra.Command, args []string) {
-        if err := config.DeleteConfig(deleteJSONFile, deleteSilent, os.Stdin); err != nil {
-            fmt.Println("Error:", err)
-            os.Exit(1)
-        }
+        result := ""
+        err := config.DeleteConfig(deleteJSONFile, deleteSilent, os.Stdin)
+        if err == nil {
+			jsonOutputFile, envOutputFile, _ := config.GetOutputFilePaths(collectJSONFile)
+			result = config.CreateSuccessOutput(jsonOutputFile, envOutputFile)
+
+		} else {
+			result = config.CreateErrorOutput(err)
+		}
+
+		fmt.Print(result)
+		os.Exit(1)
+       
     },
 }
 

@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     lsb-release \
     sudo \
-    zsh
+    zsh \
+    jq
 
 # Set the Go PATH environment variable
 ENV GOPATH=/go
