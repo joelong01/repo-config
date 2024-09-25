@@ -54,6 +54,52 @@ go install github.com/joelong01/repo-config@latest
 Make sure that your $GOPATH/bin directory is in your system's PATH so that you can run the 
 repo-config command from anywhere.
 
+The dockerfil (.devctainer/Dockerfile) will install zsh and other usefule tools.  It will also modify the .zshrc as follows
+
+``` Docker
+RUN echo 'if [[ -f "load_config.sh" ]]; then' >> ~/.zshrc && \
+    echo '    source ./load_config.sh' >> ~/.zshrc && \
+    echo 'fi' >> ~/.zshrc && \
+    echo '' >> ~/.zshrc && \
+    echo '# Function to source .ENV files from the corresponding PROJECT_DIR' >> ~/.zshrc && \
+    echo 'source_env_files() {' >> ~/.zshrc && \
+    echo '    PROJECT_DIR=$(basename "$PWD")' >> ~/.zshrc && \
+    echo '    CONFIG_DIR="$HOME/.repo-config/$PROJECT_DIR"' >> ~/.zshrc && \
+    echo '    if [[ -d "$CONFIG_DIR" ]]; then' >> ~/.zshrc && \
+    echo '        for env_file in "$CONFIG_DIR"/.*.env; do' >> ~/.zshrc && \
+    echo '            if [[ -f "$env_file" ]]; then' >> ~/.zshrc && \
+    echo '                echo "sourcing $env_file"' >> ~/.zshrc && \
+    echo '                source "$env_file"' >> ~/.zshrc && \
+    echo '            fi' >> ~/.zshrc && \
+    echo '        done' >> ~/.zshrc && \
+    echo '    fi' >> ~/.zshrc && \
+    echo '}' >> ~/.zshrc && \
+    echo '' >> ~/.zshrc && \
+    echo '# Call the function when the shell starts' >> ~/.zshrc && \
+    echo 'source_env_files' >> ~/.zshrc
+
+```
+The ```load_config.sh``` shell script file does the following:
+
+``` bash
+if [[ ! -f "repo-config" ]]; then
+    go build -o repo-config
+fi
+
+output=$(./repo-config collect --json ./end-to-end-test/test-config.json --silent)
+
+result=$(echo $output | jq -r .status)
+
+if [[ "$result" != "ok" ]]; then
+    echo -n "ERROR: "
+    echo $result | jq .message
+fi
+
+```
+It checks to see if the ```repo_config``` executable is in the current directory, and if not, tries to build it (useful when writing this program!) Then it will call it to collect the needed settings.  In any other project, the first if clause can be deleted as it will never work. 
+
+The function ```bash source_env_files ``` looks to see if there is any configration based on the current directory. If there is in loads the .ENV files from that directory into the environment.  This should be perserved if repo_config is used in any project.
+
 # Usage
 The repo-config tool provides two main commands:
 ``` 
