@@ -41,14 +41,14 @@ The directory end-to-end-test shows a sample on how to use this JSON document wi
 ## Installation
 To install repo-config, ensure you have Go installed on your system. Build the executable by running:
 
-``` bash
+```bash
 git clone https://github.com/joelong01/repo-config.git
 cd repo-config
 go build -o repo-config
 ```
 Alternatively, you can install it directly using go install:
 
-``` bash
+```bash
 go install github.com/joelong01/repo-config@latest
 ```
 Make sure that your $GOPATH/bin directory is in your system's PATH so that you can run the 
@@ -56,7 +56,7 @@ repo-config command from anywhere.
 
 The dockerfil (.devctainer/Dockerfile) will install zsh and other usefule tools.  It will also modify the .zshrc as follows
 
-``` Docker
+```Docker
 RUN echo 'if [[ -f "load_config.sh" ]]; then' >> ~/.zshrc && \
     echo '    source ./load_config.sh' >> ~/.zshrc && \
     echo 'fi' >> ~/.zshrc && \
