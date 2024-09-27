@@ -45,14 +45,9 @@ func CollectConfig(inputJSONFile string, silent bool) error {
 	}
 
 	// Load existing values from the output JSON file if it exists.
-	existingValues := make(map[string]string)
-	outputFileExists := false
-	if _, err := os.Stat(jsonOutputFile); err == nil {
-		outputFileExists = true
-		existingValues, err = loadExistingValues(inputJSONFile, jsonOutputFile)
-		if err != nil {
-			return err
-		}
+	existingValues, err := loadExistingValues(inputJSONFile, jsonOutputFile)
+	if err != nil {
+		return err
 	}
 
 	// Update configMap with existing values
@@ -70,7 +65,7 @@ func CollectConfig(inputJSONFile string, silent bool) error {
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
-
+		outputFileExists := false
 		// Check if input JSON is newer than output JSON or output doesn't exist.
 		if !outputFileExists || inputJSONModTime.After(outputJSONModTime) {
 			// Check for new or deleted settings.
@@ -128,7 +123,6 @@ func loadConfigFile(jsonFile string) (map[string]ItemConfig, error) {
 	}
 	return configMap, nil
 }
-
 
 // GetOutputFilePaths determines the output file paths based on the input JSON file.
 // Now derives the project name from the Git repository.
@@ -220,17 +214,17 @@ func loadExistingValues(inputJSONFile, jsonOutputFile string) (map[string]string
 	}
 	defer outputFile.Close()
 
-	var outputNameValuePairs []map[string]string
+	var outputValues map[string]string
 	decoder := json.NewDecoder(outputFile)
-	if err := decoder.Decode(&outputNameValuePairs); err != nil {
+	if err := decoder.Decode(&outputValues); err != nil {
 		return nil, fmt.Errorf("failed to parse existing values file: %v", err)
 	}
 
 	// Populate existingValues with values from the output file,
 	// but only for keys that exist in the input file
-	for _, pair := range outputNameValuePairs {
-		if _, exists := inputConfig[pair["Name"]]; exists {
-			existingValues[pair["Name"]] = pair["Value"]
+	for key := range inputConfig {
+		if value, exists := outputValues[key]; exists {
+			existingValues[key] = value
 		}
 	}
 
@@ -353,17 +347,13 @@ func saveConfig(inputJSONFile string, configMap map[string]ItemConfig) error {
 		return err
 	}
 
-	// Prepare data for .json file (array of name-value pairs).
-	var nameValuePairs []map[string]string
+	// Prepare data for .json file (simple key-value pairs)
+	outputValues := make(map[string]string)
 	for key, item := range configMap {
-		nameValuePair := map[string]string{
-			"Name":  key,
-			"Value": item.Default,
-		}
-		nameValuePairs = append(nameValuePairs, nameValuePair)
+		outputValues[key] = item.Default
 	}
 
-	// Write to the .json file.
+	// Write to the .json file
 	jsonFile, err := os.Create(jsonOutputFile)
 	if err != nil {
 		return fmt.Errorf("failed to create JSON output file: %v", err)
@@ -371,12 +361,12 @@ func saveConfig(inputJSONFile string, configMap map[string]ItemConfig) error {
 	defer jsonFile.Close()
 
 	jsonEncoder := json.NewEncoder(jsonFile)
-	jsonEncoder.SetIndent("", "    ") // Format JSON with indentation.
-	if err := jsonEncoder.Encode(nameValuePairs); err != nil {
+	jsonEncoder.SetIndent("", "    ") // Format JSON with indentation
+	if err := jsonEncoder.Encode(outputValues); err != nil {
 		return fmt.Errorf("failed to write JSON output file: %v", err)
 	}
 
-	// Prepare data for .env file.
+	// Prepare data for .env file
 	var envLines []string
 	for _, item := range configMap {
 		if item.TempEnvironmentVariableName != "" {
@@ -385,7 +375,7 @@ func saveConfig(inputJSONFile string, configMap map[string]ItemConfig) error {
 		}
 	}
 
-	// Write to the .env file if there are any environment variables.
+	// Write to the .env file if there are any environment variables
 	if len(envLines) > 0 {
 		envFile, err := os.Create(envOutputFile)
 		if err != nil {

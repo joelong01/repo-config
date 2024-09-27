@@ -15,10 +15,12 @@ if [[ ! -f "repo-config" ]]; then
 fi
 
 output=$(./repo-config collect --json ./end-to-end-test/test-config.json --silent)
-
 result=$(echo "$output" | jq -r .status)
 
 if [[ "$result" != "ok" ]]; then
     echo -n "ERROR: "
-    echo "$result" | jq .message
+    echo "$output" | jq -r .message
+else
+    echo -n  "config in "
+    echo "$output" | jq -r .json_file
 fi

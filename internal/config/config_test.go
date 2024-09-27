@@ -270,10 +270,10 @@ func TestCollectConfigSilentWithRemovedSetting(t *testing.T) {
 	}
 
 	// Create initial output JSON file
-	initialOutputJSON := `[
-		{"Name": "setting1", "Value": "value1"},
-		{"Name": "setting2", "Value": "value2"}
-	]`
+	initialOutputJSON := `{
+		"setting1": "value1",
+		"setting2": "value2"
+	}`
 	if err := os.WriteFile(jsonOutputFile, []byte(initialOutputJSON), 0644); err != nil {
 		t.Fatalf("Failed to write initial output JSON: %v", err)
 	}
@@ -317,17 +317,21 @@ func TestCollectConfigSilentWithRemovedSetting(t *testing.T) {
 		t.Fatalf("Failed to read JSON output file: %v", err)
 	}
 
-	var nameValuePairs []map[string]string
-	if err := json.Unmarshal(jsonContent, &nameValuePairs); err != nil {
+	var outputConfig map[string]string
+	if err := json.Unmarshal(jsonContent, &outputConfig); err != nil {
 		t.Fatalf("Failed to parse JSON output: %v", err)
 	}
 
-	if len(nameValuePairs) != 1 {
-		t.Errorf("Expected 1 setting in JSON output, got %d", len(nameValuePairs))
+	if len(outputConfig) != 1 {
+		t.Errorf("Expected 1 setting in JSON output, got %d", len(outputConfig))
 	}
 
-	if nameValuePairs[0]["Name"] != "setting1" {
-		t.Errorf("Expected setting1 in JSON output, got %s", nameValuePairs[0]["Name"])
+	if _, exists := outputConfig["setting1"]; !exists {
+		t.Errorf("Expected setting1 in JSON output, but it was not found")
+	}
+
+	if _, exists := outputConfig["setting2"]; exists {
+		t.Errorf("setting2 should have been removed, but it was found in the output")
 	}
 
 	// Check the generated .env file
