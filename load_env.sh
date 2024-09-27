@@ -15,6 +15,7 @@ source_env_files() {
             if [[ -f "$env_file" ]]; then
                 echo "sourcing $env_file"
                 # Source the .ENV file
+                # shellcheck source=/dev/null
                 source "$env_file"
             fi
         done

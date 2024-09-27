@@ -4,10 +4,12 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoadConfigFile(t *testing.T) {
@@ -232,5 +234,110 @@ func TestInteractiveConfig(t *testing.T) {
 	// Verify that the value was updated
 	if configMap["key1"].Default != "newvalue" {
 		t.Errorf("Expected 'key1' default to be 'newvalue', got '%s'", configMap["key1"].Default)
+	}
+}
+
+func TestCollectConfigSilentWithRemovedSetting(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "config_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create initial input JSON file
+	initialInputJSON := `{
+		"setting1": {
+			"description": "Setting 1",
+			"default": "value1",
+			"tempEnvironmentVariableName": "SETTING1"
+		},
+		"setting2": {
+			"description": "Setting 2",
+			"default": "value2",
+			"tempEnvironmentVariableName": "SETTING2"
+		}
+	}`
+	inputJSONPath := filepath.Join(tempDir, "input.json")
+	if err := os.WriteFile(inputJSONPath, []byte(initialInputJSON), 0644); err != nil {
+		t.Fatalf("Failed to write initial input JSON: %v", err)
+	}
+
+	// Get the output file paths
+	jsonOutputFile, envOutputFile, err := GetOutputFilePaths(inputJSONPath)
+	if err != nil {
+		t.Fatalf("Failed to get output file paths: %v", err)
+	}
+
+	// Create initial output JSON file
+	initialOutputJSON := `[
+		{"Name": "setting1", "Value": "value1"},
+		{"Name": "setting2", "Value": "value2"}
+	]`
+	if err := os.WriteFile(jsonOutputFile, []byte(initialOutputJSON), 0644); err != nil {
+		t.Fatalf("Failed to write initial output JSON: %v", err)
+	}
+
+	// Create initial output ENV file
+	initialOutputENV := "SETTING1=value1\nSETTING2=value2"
+	if err := os.WriteFile(envOutputFile, []byte(initialOutputENV), 0644); err != nil {
+		t.Fatalf("Failed to write initial output ENV: %v", err)
+	}
+
+	// Modify input JSON to remove a setting
+	updatedInputJSON := `{
+		"setting1": {
+			"description": "Setting 1",
+			"default": "value1",
+			"tempEnvironmentVariableName": "SETTING1"
+		}
+	}`
+	if err := os.WriteFile(inputJSONPath, []byte(updatedInputJSON), 0644); err != nil {
+		t.Fatalf("Failed to write updated input JSON: %v", err)
+	}
+
+	// Set the modification time of the input file to be older than the output file
+	outputFileInfo, err := os.Stat(jsonOutputFile)
+	if err != nil {
+		t.Fatalf("Failed to get output file info: %v", err)
+	}
+	oldTime := outputFileInfo.ModTime().Add(-1 * time.Hour)
+	if err := os.Chtimes(inputJSONPath, oldTime, oldTime); err != nil {
+		t.Fatalf("Failed to change input file modification time: %v", err)
+	}
+
+	// Run CollectConfig with --silent flag
+	if err := CollectConfig(inputJSONPath, true); err != nil {
+		t.Fatalf("Failed to run CollectConfig with --silent flag: %v", err)
+	}
+
+	// Check the generated .json file
+	jsonContent, err := os.ReadFile(jsonOutputFile)
+	if err != nil {
+		t.Fatalf("Failed to read JSON output file: %v", err)
+	}
+
+	var nameValuePairs []map[string]string
+	if err := json.Unmarshal(jsonContent, &nameValuePairs); err != nil {
+		t.Fatalf("Failed to parse JSON output: %v", err)
+	}
+
+	if len(nameValuePairs) != 1 {
+		t.Errorf("Expected 1 setting in JSON output, got %d", len(nameValuePairs))
+	}
+
+	if nameValuePairs[0]["Name"] != "setting1" {
+		t.Errorf("Expected setting1 in JSON output, got %s", nameValuePairs[0]["Name"])
+	}
+
+	// Check the generated .env file
+	envContent, err := os.ReadFile(envOutputFile)
+	if err != nil {
+		t.Fatalf("Failed to read env output file: %v", err)
+	}
+
+	expectedEnvContent := "SETTING1=value1"
+	if string(envContent) != expectedEnvContent {
+		t.Errorf("Expected env content to be %s, got %s", expectedEnvContent, string(envContent))
 	}
 }

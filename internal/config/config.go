@@ -49,7 +49,7 @@ func CollectConfig(inputJSONFile string, silent bool) error {
 	outputFileExists := false
 	if _, err := os.Stat(jsonOutputFile); err == nil {
 		outputFileExists = true
-		existingValues, err = loadExistingValues(jsonOutputFile)
+		existingValues, err = loadExistingValues(inputJSONFile, jsonOutputFile)
 		if err != nil {
 			return err
 		}
@@ -92,8 +92,9 @@ func CollectConfig(inputJSONFile string, silent bool) error {
 				fmt.Fprintln(os.Stderr, "Missing values detected. Proceeding interactively.")
 				return interactiveConfig(configMap, inputJSONFile, os.Stdin)
 			} else {
-				// All values present, return without action.
-				return nil
+				// All values present, save and return.  we need to save in case
+				// a setting has been deleted.
+				return saveConfig(inputJSONFile, configMap)
 			}
 		}
 	}
@@ -198,23 +199,41 @@ func getProjectName(startPath string) (string, error) {
 }
 
 // loadExistingValues loads existing values from the output JSON file.
-func loadExistingValues(jsonOutputFile string) (map[string]string, error) {
-	file, err := os.Open(jsonOutputFile)
+func loadExistingValues(inputJSONFile, jsonOutputFile string) (map[string]string, error) {
+	// Load the input JSON file
+	inputConfig, err := loadConfigFile(inputJSONFile)
 	if err != nil {
+		return nil, fmt.Errorf("failed to load input JSON file: %v", err)
+	}
+
+	// Initialize the result map
+	existingValues := make(map[string]string)
+
+	// Load the output JSON file if it exists
+	outputFile, err := os.Open(jsonOutputFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// If the output file doesn't exist, return an empty map
+			return existingValues, nil
+		}
 		return nil, fmt.Errorf("failed to open existing values file: %v", err)
 	}
-	defer file.Close()
+	defer outputFile.Close()
 
-	var nameValuePairs []map[string]string
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&nameValuePairs); err != nil {
+	var outputNameValuePairs []map[string]string
+	decoder := json.NewDecoder(outputFile)
+	if err := decoder.Decode(&outputNameValuePairs); err != nil {
 		return nil, fmt.Errorf("failed to parse existing values file: %v", err)
 	}
 
-	existingValues := make(map[string]string)
-	for _, pair := range nameValuePairs {
-		existingValues[pair["Name"]] = pair["Value"]
+	// Populate existingValues with values from the output file,
+	// but only for keys that exist in the input file
+	for _, pair := range outputNameValuePairs {
+		if _, exists := inputConfig[pair["Name"]]; exists {
+			existingValues[pair["Name"]] = pair["Value"]
+		}
 	}
+
 	return existingValues, nil
 }
 
